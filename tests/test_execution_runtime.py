@@ -9,6 +9,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+from urllib.error import URLError
 
 
 SCRIPTS = (
@@ -167,6 +169,45 @@ class ExecutionRuntimeTests(unittest.TestCase):
                 allow_remote_url=True,
             )
 
+    def test_http_check_retries_transient_startup_failure(self) -> None:
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def getcode(self):
+                return 200
+
+            def geturl(self):
+                return "http://127.0.0.1:8000/health"
+
+            def read(self, _size):
+                return b"o"
+
+        class FlakyOpener:
+            def __init__(self):
+                self.calls = 0
+
+            def open(self, _request, timeout):
+                self.calls += 1
+                self.timeout = timeout
+                if self.calls == 1:
+                    raise URLError("service is not ready")
+                return Response()
+
+        opener = FlakyOpener()
+        with patch.object(verify, "build_opener", return_value=opener):
+            result = verify.http_check(
+                "http://127.0.0.1:8000/health",
+                [(200, 200)],
+                0.5,
+            )
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["attempts"], 2)
+        self.assertEqual(opener.calls, 2)
+
     def test_verification_receipt_symlink_target_is_rejected(self) -> None:
         self.enter_running_with_one_shot()
         outside_receipt = self.root / "outside-environment.json"
@@ -262,7 +303,7 @@ class ExecutionRuntimeTests(unittest.TestCase):
                 "200",
                 2.0,
             )
-            self.assertTrue(receipt["passed"])
+            self.assertTrue(receipt["passed"], json.dumps(receipt["http_checks"], indent=2))
             self.assertEqual(receipt["approved_requirement_sha256"], self.digest)
             self.assertEqual(receipt["start_run"]["run_id"], start_result["run_id"])
             self.assertTrue(receipt["start_run"]["matches_approved_requirement"])

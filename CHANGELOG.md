@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- Retry transient HTTP startup failures within the configured verification timeout.
+
 ## [0.1.0] - 2026-08-26
 
 ### Added

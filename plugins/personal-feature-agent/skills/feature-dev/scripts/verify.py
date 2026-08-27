@@ -207,25 +207,50 @@ def http_check(
     if timeout <= 0:
         raise VerificationError("HTTP timeout must be greater than zero")
     started = time.monotonic()
+    deadline = started + timeout
+    request = Request(url, headers={"User-Agent": "personal-feature-agent/1"})
+    opener = build_opener(_GuardedRedirectHandler(allow_remote_url))
+    attempts = 0
     status: Optional[int] = None
     final_url: Optional[str] = None
     error: Optional[str] = None
-    try:
-        request = Request(url, headers={"User-Agent": "personal-feature-agent/1"})
-        opener = build_opener(_GuardedRedirectHandler(allow_remote_url))
-        with opener.open(request, timeout=timeout) as response:
-            status = response.getcode()
-            final_url = response.geturl()
-            response.read(1)
-    except HTTPError as exc:
-        status = exc.code
-        final_url = exc.geturl()
-        error = None if _status_expected(status, expected) else f"HTTP status {status}"
-    except (URLError, TimeoutError, OSError) as exc:
-        error = str(exc).replace(url, _redact_url(url) or "<redacted-url>")
-    passed = status is not None and _status_expected(status, expected) and error is None
-    if status is not None and not passed and error is None:
-        error = f"HTTP status {status}"
+    passed = False
+
+    while True:
+        attempts += 1
+        status = None
+        final_url = None
+        error = None
+        remaining = max(0.001, deadline - time.monotonic())
+        try:
+            with opener.open(request, timeout=remaining) as response:
+                status = response.getcode()
+                final_url = response.geturl()
+                response.read(1)
+        except HTTPError as exc:
+            status = exc.code
+            final_url = exc.geturl()
+            error = None if _status_expected(status, expected) else f"HTTP status {status}"
+        except (URLError, TimeoutError, OSError) as exc:
+            error = str(exc).replace(url, _redact_url(url) or "<redacted-url>")
+
+        passed = status is not None and _status_expected(status, expected) and error is None
+        if status is not None and not passed and error is None:
+            error = f"HTTP status {status}"
+        if passed:
+            break
+
+        transient_status = status in {408, 425, 429} or (
+            isinstance(status, int) and 500 <= status <= 599
+        )
+        retryable = status is None or transient_status or (
+            error is not None and status is not None and _status_expected(status, expected)
+        )
+        remaining = deadline - time.monotonic()
+        if not retryable or remaining <= 0:
+            break
+        time.sleep(min(0.1, remaining))
+
     return {
         "kind": "http",
         "url": _redact_url(url),
@@ -235,6 +260,7 @@ def http_check(
         "expected_status": [
             str(start) if start == end else f"{start}-{end}" for start, end in expected
         ],
+        "attempts": attempts,
         "passed": passed,
         "duration_seconds": round(time.monotonic() - started, 3),
         "error": error,
