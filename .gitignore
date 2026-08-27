@@ -1,0 +1,32 @@
+# Operating systems
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# JavaScript
+node_modules/
+coverage/
+dist/
+
+# Local plugin and workflow output
+.feature-agent/
+*.log
+
+# Environment and secrets
+.env
+.env.*
+!.env.example

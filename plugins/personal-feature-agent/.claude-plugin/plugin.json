@@ -1,0 +1,16 @@
+{
+    "name": "personal-feature-agent",
+    "version": "0.1.0",
+  "description": "Turn a small feature request into an approved specification, working code, and a verified local environment.",
+    "author": {
+        "name": "lscee"
+    },
+  "license": "Apache-2.0",
+  "keywords": [
+    "feature-development",
+    "specification",
+    "local-development",
+    "testing"
+  ],
+  "skills": "./skills/"
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+    "name": "personal-feature-agent",
+    "description": "A cross-platform agent workflow for turning small feature requests into verified local environments.",
+    "metadata": {
+        "description": "A cross-platform agent workflow for turning small feature requests into verified local environments."
+    },
+    "owner": {
+        "name": "lscee"
+    },
+  "plugins": [
+    {
+      "name": "personal-feature-agent",
+      "source": "./plugins/personal-feature-agent",
+      "description": "Draft, approve, implement, build, run, and verify a feature in the current repository.",
+      "version": "0.1.0",
+            "author": {
+                "name": "lscee"
+            }
+    }
+  ]
+}

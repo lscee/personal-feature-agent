@@ -1,0 +1,20 @@
+{
+  "name": "personal-feature-agent",
+  "interface": {
+    "displayName": "Personal Feature Agent"
+  },
+  "plugins": [
+    {
+      "name": "personal-feature-agent",
+      "source": {
+        "source": "local",
+        "path": "./plugins/personal-feature-agent"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
