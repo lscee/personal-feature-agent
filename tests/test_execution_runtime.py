@@ -30,6 +30,7 @@ import verify  # noqa: E402
 
 GITHUB_HOSTED_MACOS = (
     sys.platform == "darwin"
+    and os.environ.get("GITHUB_ACTIONS") == "true"
     and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
 )
 
@@ -301,6 +302,7 @@ class ExecutionRuntimeTests(unittest.TestCase):
             self.assertTrue(receipt["passed"])
             self.assertEqual(receipt["approved_requirement_sha256"], self.digest)
             self.assertEqual(receipt["start_run"]["run_id"], start_result["run_id"])
+            self.assertEqual(receipt["start_run"]["kind"], "background_process")
             self.assertTrue(receipt["start_run"]["matches_approved_requirement"])
             self.assertTrue(receipt["start_run"]["process_alive"])
             self.assertEqual(receipt["test_run"]["exit_code"], 0)
