@@ -310,7 +310,17 @@ class ExecutionRuntimeTests(unittest.TestCase):
                 "200",
                 2.0,
             )
-            self.assertTrue(receipt["passed"], json.dumps(receipt["http_checks"], indent=2))
+            failure_evidence = {
+                "http_checks": receipt["http_checks"],
+                "start_result": start_result,
+                "stdout": (self.root / start_result["stdout_path"]).read_text(
+                    encoding="utf-8"
+                ),
+                "stderr": (self.root / start_result["stderr_path"]).read_text(
+                    encoding="utf-8"
+                ),
+            }
+            self.assertTrue(receipt["passed"], json.dumps(failure_evidence, indent=2))
             self.assertEqual(receipt["approved_requirement_sha256"], self.digest)
             self.assertEqual(receipt["start_run"]["run_id"], start_result["run_id"])
             self.assertTrue(receipt["start_run"]["matches_approved_requirement"])
