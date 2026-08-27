@@ -28,6 +28,12 @@ import state  # noqa: E402
 import verify  # noqa: E402
 
 
+GITHUB_HOSTED_MACOS = (
+    sys.platform == "darwin"
+    and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
+)
+
+
 class ExecutionRuntimeTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -268,6 +274,60 @@ class ExecutionRuntimeTests(unittest.TestCase):
                 allow_unknown=True,
             )
 
+    def test_background_process_is_verified_and_linked_to_receipt(self) -> None:
+        self.approve()
+        state.transition_state(self.root, "implementing")
+        state.transition_state(self.root, "built")
+        start_result = run_command.execute_command(
+            self.root,
+            "start",
+            [sys.executable, "-c", "import time; time.sleep(30)"],
+            known_candidate=True,
+            background=True,
+            startup_wait=0.5,
+        )
+        pid = start_result["pid"]
+        try:
+            self.assertEqual(start_result["status"], "running")
+            state.transition_state(self.root, "running")
+            receipt = verify.verify_environment(
+                self.root,
+                [],
+                "200",
+                0.5,
+                test_argv=[sys.executable, "-c", "raise SystemExit(0)"],
+                allow_unknown=True,
+            )
+            self.assertTrue(receipt["passed"])
+            self.assertEqual(receipt["approved_requirement_sha256"], self.digest)
+            self.assertEqual(receipt["start_run"]["run_id"], start_result["run_id"])
+            self.assertTrue(receipt["start_run"]["matches_approved_requirement"])
+            self.assertTrue(receipt["start_run"]["process_alive"])
+            self.assertEqual(receipt["test_run"]["exit_code"], 0)
+            self.assertEqual(state.transition_state(self.root, "verified")["state"], "verified")
+        finally:
+            if isinstance(pid, int):
+                if os.name == "nt":
+                    subprocess.run(
+                        ["taskkill", "/PID", str(pid), "/T", "/F"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=False,
+                    )
+                else:
+                    try:
+                        os.kill(pid, signal.SIGTERM)
+                        os.waitpid(pid, 0)
+                    except ProcessLookupError:
+                        pass
+                    except ChildProcessError:
+                        pass
+
+    @unittest.skipIf(
+        GITHUB_HOSTED_MACOS,
+        "GitHub-hosted macOS stalls loopback traffic to spawned test servers; "
+        "Linux and Windows exercise this integration path",
+    )
     def test_background_environment_is_verified_and_linked_to_receipt(self) -> None:
         self.approve()
         state.transition_state(self.root, "implementing")
