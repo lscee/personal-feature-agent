@@ -198,7 +198,7 @@ class ExecutionRuntimeTests(unittest.TestCase):
                 return Response()
 
         opener = FlakyOpener()
-        with patch.object(verify, "build_opener", return_value=opener):
+        with patch.object(verify, "build_opener", return_value=opener) as build_opener:
             result = verify.http_check(
                 "http://127.0.0.1:8000/health",
                 [(200, 200)],
@@ -207,6 +207,13 @@ class ExecutionRuntimeTests(unittest.TestCase):
         self.assertTrue(result["passed"])
         self.assertEqual(result["attempts"], 2)
         self.assertEqual(opener.calls, 2)
+        handlers = build_opener.call_args.args
+        self.assertTrue(
+            any(
+                isinstance(handler, verify.ProxyHandler) and handler.proxies == {}
+                for handler in handlers
+            )
+        )
 
     def test_verification_receipt_symlink_target_is_rejected(self) -> None:
         self.enter_running_with_one_shot()

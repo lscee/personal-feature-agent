@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse, urlsplit, urlunsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 try:
     from .run_command import RunnerError, execute_command, select_command
@@ -209,7 +209,13 @@ def http_check(
     started = time.monotonic()
     deadline = started + timeout
     request = Request(url, headers={"User-Agent": "personal-feature-agent/1"})
-    opener = build_opener(_GuardedRedirectHandler(allow_remote_url))
+    handlers: List[Any] = [_GuardedRedirectHandler(allow_remote_url)]
+    if not remote:
+        # A loopback development check must never be sent through an inherited
+        # environment or system proxy. Besides producing false failures, doing
+        # so could disclose a local URL and its path to that proxy.
+        handlers.insert(0, ProxyHandler({}))
+    opener = build_opener(*handlers)
     attempts = 0
     status: Optional[int] = None
     final_url: Optional[str] = None

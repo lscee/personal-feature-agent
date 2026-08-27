@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Fixed
 
 - Retry transient HTTP startup failures within the configured verification timeout.
+- Bypass inherited proxies for loopback development-environment health checks.
 
 ## [0.1.0] - 2026-08-26
 
